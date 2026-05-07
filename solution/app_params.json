@@ -1,0 +1,218 @@
+{
+    "Connection": [
+        {
+            "节点编辑": [
+                {
+                    "endNodeId": 1,
+                    "inPortIndex": 0,
+                    "outPortIndex": 0,
+                    "startNodeId": 0
+                },
+                {
+                    "endNodeId": 4,
+                    "inPortIndex": 0,
+                    "outPortIndex": 0,
+                    "startNodeId": 1
+                },
+                {
+                    "endNodeId": 2,
+                    "inPortIndex": 0,
+                    "outPortIndex": 0,
+                    "startNodeId": 1
+                },
+                {
+                    "endNodeId": 3,
+                    "inPortIndex": 0,
+                    "outPortIndex": 0,
+                    "startNodeId": 2
+                },
+                {
+                    "endNodeId": 5,
+                    "inPortIndex": 0,
+                    "outPortIndex": 0,
+                    "startNodeId": 3
+                },
+                {
+                    "endNodeId": 5,
+                    "inPortIndex": 0,
+                    "outPortIndex": 0,
+                    "startNodeId": 4
+                }
+            ]
+        },
+        {
+            "节点编辑_1": [
+            ]
+        },
+        {
+            "节点编辑_2": [
+                {
+                    "endNodeId": 1,
+                    "inPortIndex": 0,
+                    "outPortIndex": 0,
+                    "startNodeId": 0
+                }
+            ]
+        },
+        {
+            "节点编辑_3": [
+                {
+                    "endNodeId": 1,
+                    "inPortIndex": 0,
+                    "outPortIndex": 0,
+                    "startNodeId": 0
+                }
+            ]
+        }
+    ],
+    "Node": [
+        {
+            "节点编辑": [
+                {
+                    "NodeId": {
+                        "id": 0
+                    },
+                    "NodePos": {
+                        "x": 635,
+                        "y": 748
+                    },
+                    "NodeTitle": {
+                        "title": "节点"
+                    }
+                },
+                {
+                    "NodeId": {
+                        "id": 1
+                    },
+                    "NodePos": {
+                        "x": 854,
+                        "y": 827
+                    },
+                    "NodeTitle": {
+                        "title": "134"
+                    }
+                },
+                {
+                    "NodeId": {
+                        "id": 2
+                    },
+                    "NodePos": {
+                        "x": 930,
+                        "y": 1032
+                    },
+                    "NodeTitle": {
+                        "title": "节点"
+                    }
+                },
+                {
+                    "NodeId": {
+                        "id": 3
+                    },
+                    "NodePos": {
+                        "x": 937,
+                        "y": 1171
+                    },
+                    "NodeTitle": {
+                        "title": "节点"
+                    }
+                },
+                {
+                    "NodeId": {
+                        "id": 4
+                    },
+                    "NodePos": {
+                        "x": 639,
+                        "y": 1089
+                    },
+                    "NodeTitle": {
+                        "title": "节点"
+                    }
+                },
+                {
+                    "NodeId": {
+                        "id": 5
+                    },
+                    "NodePos": {
+                        "x": 709.0600000000001,
+                        "y": 1265.6600000000003
+                    },
+                    "NodeTitle": {
+                        "title": "节点"
+                    }
+                }
+            ]
+        },
+        {
+            "节点编辑_1": [
+                {
+                    "NodeId": {
+                        "id": 0
+                    },
+                    "NodePos": {
+                        "x": 672,
+                        "y": 775
+                    },
+                    "NodeTitle": {
+                        "title": "节点"
+                    }
+                }
+            ]
+        },
+        {
+            "节点编辑_2": [
+                {
+                    "NodeId": {
+                        "id": 0
+                    },
+                    "NodePos": {
+                        "x": 895,
+                        "y": 826
+                    },
+                    "NodeTitle": {
+                        "title": "节点"
+                    }
+                },
+                {
+                    "NodeId": {
+                        "id": 1
+                    },
+                    "NodePos": {
+                        "x": 894,
+                        "y": 947
+                    },
+                    "NodeTitle": {
+                        "title": "节点"
+                    }
+                }
+            ]
+        },
+        {
+            "节点编辑_3": [
+                {
+                    "NodeId": {
+                        "id": 0
+                    },
+                    "NodePos": {
+                        "x": 763,
+                        "y": 792
+                    },
+                    "NodeTitle": {
+                        "title": "节点"
+                    }
+                },
+                {
+                    "NodeId": {
+                        "id": 1
+                    },
+                    "NodePos": {
+                        "x": 836,
+                        "y": 933
+                    },
+                    "NodeTitle": {
+                        "title": "节点"
+                    }
+                }
+            ]
+        }
+    ]
+}
