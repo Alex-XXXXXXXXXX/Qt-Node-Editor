@@ -7,13 +7,14 @@
 #include <QJsonObject>
 #include <QJsonDocument>
 #include <QJsonArray>
+#include "include/FlowSerializer.h"
 
 QtNodes::QtNodes(QWidget* parent)
 	: QMainWindow(parent)
 {
 	setupUI();
 	setupMenus();
-	setWindowTitle("Ω⁄µ„¡˜≥Ã±‡º≠∆˜");
+	setWindowTitle(QString::fromUtf8("ËäÇÁÇπÊµÅÁ®ãÁºñËæëÂô®"));
 	resize(1024, 768);
 }
 
@@ -40,23 +41,18 @@ void QtNodes::setupUI()
 	connect(m_scene, &NodeScene::slot_OpenFunction, this, &QtNodes::slot_OpenFunction);
 	NodeView* m_view = new NodeView(this);
 	m_view->setScene(m_scene);
-	//∂‡Ω⁄µ„≤‚ ‘
-	//for (int i = 0; i < 1000; i++)
-	//{
-	//	m_scene->createNode(QString("item %1").arg(i), QPointF(100 + (i % 50) * 150, 200 + (i / 50) * 150));
-	//}
 	m_scenes.append(m_scene);
 	m_views.append(m_view);
 	m_tabWidget = new QTabWidget(this);
-	m_tabWidget->addTab(m_view, "Ω⁄µ„±‡º≠");
+	m_tabWidget->addTab(m_view, QString::fromUtf8("ËäÇÁÇπÁºñËæë"));
 	connect(m_tabWidget->tabBar(), &QTabBar::tabBarDoubleClicked, [=](int index) {
 		if (index != -1)
 		{
 			bool ok;
 			QString currentName = m_tabWidget->tabText(index);
 			QString newName = QInputDialog::getText(this,
-				"÷ÿ√¸√˚±Í«©",
-				"«Î ‰»Î–¬±Í«©√˚:",
+				QString::fromUtf8("ÈáçÂëΩÂêçÊ†áÁ≠æ"),
+				QString::fromUtf8("ËØ∑ËæìÂÖ•Êñ∞Ê†áÁ≠æÂêç:"),
 				QLineEdit::Normal,
 				currentName,
 				&ok);
@@ -72,7 +68,7 @@ void QtNodes::setupUI()
 					}
 				}
 				if (nameExists) {
-					QMessageBox::warning(this, "æØ∏Ê", "±Í«©√˚“—¥Ê‘⁄£¨«Î π”√Œ®“ª√˚≥∆°£");
+					QMessageBox::warning(this, QString::fromUtf8("ÈîôËØØ"), QString::fromUtf8("Ê†áÁ≠æÂêçÂ∑≤Â≠òÂú®ÔºåËØ∑‰ΩøÁî®ÂîØ‰∏ÄÂêçÁß∞„ÄÇ"));
 					return;
 				}
 				else
@@ -114,43 +110,29 @@ void QtNodes::setupUI()
 
 void QtNodes::setupMenus()
 {
-	QMenu* fileMenu = menuBar()->addMenu("Œƒº˛");
-	QAction* exitAction = fileMenu->addAction("ÕÀ≥ˆ");
+	QMenu* fileMenu = menuBar()->addMenu(QString::fromUtf8("Êñá‰ª∂"));
+	QAction* exitAction = fileMenu->addAction(QString::fromUtf8("ÈÄÄÂá∫"));
 	connect(exitAction, &QAction::triggered, this, &QWidget::close);
-	QMenu* editMenu = menuBar()->addMenu("±‡º≠");
-	QAction* createFlowAction = editMenu->addAction("¥¥Ω®¡˜≥Ã");
+	QMenu* editMenu = menuBar()->addMenu(QString::fromUtf8("ÁºñËæë"));
+	QAction* createFlowAction = editMenu->addAction(QString::fromUtf8("ÂàõÂª∫ÊµÅÁ®ã"));
 	connect(createFlowAction, &QAction::triggered, this, &QtNodes::createFlow);
-	QAction* deleteFlowAction = editMenu->addAction("…æ≥˝¡˜≥Ã");
+	QAction* deleteFlowAction = editMenu->addAction(QString::fromUtf8("Âà†Èô§ÊµÅÁ®ã"));
 	editMenu->addSeparator();
 	connect(deleteFlowAction, &QAction::triggered, this, &QtNodes::deleteFlow);
-	QAction* loadFlowAction = editMenu->addAction("º”‘ÿ¡˜≥Ã");
+	QAction* loadFlowAction = editMenu->addAction(QString::fromUtf8("Âä†ËΩΩÊµÅÁ®ã"));
 	connect(loadFlowAction, &QAction::triggered, this, &QtNodes::loadFlow);
-	QAction* saveFlowAction = editMenu->addAction("±£¥Ê¡˜≥Ã");
+	QAction* saveFlowAction = editMenu->addAction(QString::fromUtf8("‰øùÂ≠òÊµÅÁ®ã"));
 	editMenu->addSeparator();
 	connect(saveFlowAction, &QAction::triggered, this, &QtNodes::saveFlow);
-	QAction* runFlowAction = editMenu->addAction("÷¥––¡˜≥Ã");
+	QAction* runFlowAction = editMenu->addAction(QString::fromUtf8("ÊâßË°åÊµÅÁ®ã"));
 	connect(runFlowAction, &QAction::triggered, this, [=]() {
 		int m_iIndex = m_tabWidget->currentIndex();
-		for (auto item : m_scenes[m_iIndex]->items()) {
-			if (item->type() == QGraphicsItem::UserType + 3)
-			{
-				if (Node* node = qgraphicsitem_cast<Node*>(item)) {
-					node->setResultColor(Qt::white);
-					node->setStatus(TaskNotStarted);
-				}
-			}
-		}
-		QList<Node*> sortedNodes = m_scenes[m_iIndex]->TopologicalSorting();
-		for (auto node : sortedNodes) {
-			if (node->inputNodes().isEmpty()) {
-				node->execute();
-			}
-		}
+		m_scenes[m_iIndex]->executeFlow();
 	});
-	QMenu* helpMenu = menuBar()->addMenu("∞Ô÷˙");
-	QAction* aboutAction = helpMenu->addAction("πÿ”⁄");
+	QMenu* helpMenu = menuBar()->addMenu(QString::fromUtf8("Â∏ÆÂä©"));
+	QAction* aboutAction = helpMenu->addAction(QString::fromUtf8("ÂÖ≥‰∫é"));
 	connect(aboutAction, &QAction::triggered, this, &QtNodes::about);
-	QToolBar* toolBar = addToolBar("π§æﬂ¿∏");
+	QToolBar* toolBar = addToolBar(QString::fromUtf8("Â∑•ÂÖ∑Ê†è"));
 }
 
 void QtNodes::keyPressEvent(QKeyEvent* event)
@@ -174,7 +156,7 @@ void QtNodes::createDefaultNode()
 {
 	int m_iIndex = m_tabWidget->currentIndex();
 	QPointF center = m_views[m_iIndex]->mapToScene(m_views[m_iIndex]->viewport()->rect().center());
-	m_scenes[m_iIndex]->createNode("Ω⁄µ„", center);
+	m_scenes[m_iIndex]->createNode(QString::fromUtf8("ËäÇÁÇπ"), center);
 }
 
 void QtNodes::deleteSelectedItems()
@@ -227,7 +209,7 @@ void QtNodes::createFlow()
 	m_scenes.append(m_scene);
 	m_views.append(m_view);
 	int m_size = m_tabWidget->count();
-	int m_iIndex = m_tabWidget->addTab(m_view, QString("Ω⁄µ„±‡º≠_%1").arg(m_size));
+	int m_iIndex = m_tabWidget->addTab(m_view, QString::fromUtf8("ËäÇÁÇπÁºñËæë_%1").arg(m_size));
 	m_tabWidget->setCurrentIndex(m_iIndex);
 	m_sceneMap->bindMainView(m_scene, m_view);
 }
@@ -241,25 +223,16 @@ void QtNodes::deleteFlow()
 		m_views.removeAt(m_iIndex);
 	}
 	else {
-		QMessageBox::warning(this, "æØ∏Ê", "÷¡…Ÿ±£¡Ù“ª∏ˆ¡˜≥Ã°£");
+		QMessageBox::warning(this, QString::fromUtf8("ÈîôËØØ"), QString::fromUtf8("Ëá≥Â∞ë‰øùÁïô‰∏Ä‰∏™ÊµÅÁ®ã„ÄÇ"));
 	}
 }
 
 void QtNodes::loadFlow()
 {
-	QFile file("./solution/app_params.json");
-	if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-		qWarning() << "Œﬁ∑®¥Úø™Œƒº˛Ω¯––∂¡»°:" << file.errorString();
+	QList<SceneData> scenesData = FlowSerializer::loadFromFile("./solution/app_params.json");
+	if (scenesData.isEmpty())
 		return;
-	}
-	QByteArray data = file.readAll();
-	file.close();
-	QJsonDocument doc = QJsonDocument::fromJson(data);
-	if (doc.isNull() || !doc.isObject()) {
-		qWarning() << "Œﬁ–ßµƒJSON∏Ò Ω";
-		return;
-	}
-	QJsonObject NodeTabs = doc.object();
+
 	while (m_tabWidget->count() > 0) {
 		m_tabWidget->removeTab(0);
 	}
@@ -273,146 +246,86 @@ void QtNodes::loadFlow()
 		view = nullptr;
 	}
 	m_views.clear();
-	QJsonArray NodesArrays = NodeTabs["Node"].toArray();
-	for (int i = 0; i < NodesArrays.size(); i++)
+
+	for (const SceneData& sceneData : scenesData)
 	{
-		QJsonObject NodeTab = NodesArrays[i].toObject();
-		QString TabName = NodeTab.keys().first();
-		QJsonArray NodesArray = NodeTab[TabName].toArray();
 		NodeScene* m_scene = new NodeScene(this);
 		connect(m_scene, &NodeScene::slot_OpenFunction, this, &QtNodes::slot_OpenFunction);
 		NodeView* m_view = new NodeView(this);
 		m_view->setScene(m_scene);
 		m_scenes.append(m_scene);
 		m_views.append(m_view);
-		int m_iIndex = m_tabWidget->addTab(m_view, TabName);
+		int m_iIndex = m_tabWidget->addTab(m_view, sceneData.tabName);
 		m_tabWidget->setCurrentIndex(m_iIndex);
-		for (int j = 0; j < NodesArray.size(); j++)
-		{
-			QJsonObject NodeObject = NodesArray[j].toObject();
-			int id = NodeObject["NodeId"].toObject()["id"].toInt();
-			QString title = NodeObject["NodeTitle"].toObject()["title"].toString();
-			double x = NodeObject["NodePos"].toObject()["x"].toDouble();
-			double y = NodeObject["NodePos"].toObject()["y"].toDouble();
-			m_scene->createNode(id, title, QPointF(x, y));
-		}
-	}
 
-	QJsonArray NodesConnections = NodeTabs["Connection"].toArray();
-	for (int i = 0; i < NodesConnections.size(); i++)
-	{
-		QJsonObject ConnectionsTab = NodesConnections[i].toObject();
-		QString TabName = ConnectionsTab.keys().first();
-		QJsonArray ConnectionsArray = ConnectionsTab[TabName].toArray();
-		int m_iIndex = 0;
-		for (int i = 0; i < m_tabWidget->count(); i++)
+		for (const SceneNodeInfo& info : sceneData.nodes)
 		{
-			if (m_tabWidget->tabText(i) == TabName)
-			{
-				m_iIndex = i;
-			}
+			m_scene->createNode(info.id, info.title, info.position);
 		}
-		for (int j = 0; j < ConnectionsArray.size(); j++)
+
+		for (const SceneConnectionInfo& conn : sceneData.connections)
 		{
-			QJsonObject ConnectionObject = ConnectionsArray[j].toObject();
-			int startNodeId = ConnectionObject["startNodeId"].toInt();
-			int inPortIndex = ConnectionObject["inPortIndex"].toInt();
 			NodeSocket* startSocket = nullptr;
 			NodeSocket* endSocket = nullptr;
-			for (Node* item : m_scenes[m_iIndex]->nodes())
+			for (Node* node : m_scene->nodes())
 			{
-				if (item->id() == startNodeId)
-				{
-					startSocket = item->outputSockets();
-				}
+				if (node->id() == conn.startNodeId)
+					startSocket = node->outputSockets();
+				if (node->id() == conn.endNodeId)
+					endSocket = node->inputSockets();
 			}
-			int endNodeId = ConnectionObject["endNodeId"].toInt();
-			int outPortIndex = ConnectionObject["outNodeIndex"].toInt();
-			for (Node* item : m_scenes[m_iIndex]->nodes())
-			{
-				if (item->id() == endNodeId)
-				{
-					endSocket = item->inputSockets();
-				}
-			}
-			m_scenes[m_iIndex]->connectSockets(startSocket, endSocket);
+			if (startSocket && endSocket)
+				m_scene->connectSockets(startSocket, endSocket);
 		}
 	}
 }
 
 void QtNodes::saveFlow()
 {
+	QList<SceneData> scenesData;
 	int m_count = m_tabWidget->count();
-	QJsonObject NodeTabs;
-	QJsonArray NodesArrays;
-	QJsonArray NodesConnections;
 	for (int i = 0; i < m_count; i++)
 	{
-		QJsonObject NodeTab;
-		QString TabName = m_tabWidget->tabText(i);
-		QJsonArray NodesArray;
-		QVector<Node*> Nodes = m_scenes[i]->nodes();
-		for (Node* item : Nodes)
-		{
-			int id = item->id();
-			QJsonObject NodeId;
-			NodeId["id"] = id;
-			QString title = item->title();
-			QJsonObject NodeTitle;
-			NodeTitle["title"] = title;
-			QPointF pos = item->pos();
-			QJsonObject NodePos;
-			NodePos["x"] = pos.x();
-			NodePos["y"] = pos.y();
-			QJsonObject NodeObject;
-			NodeObject["NodeId"] = NodeId;
-			NodeObject["NodeTitle"] = NodeTitle;
-			NodeObject["NodePos"] = NodePos;
-			NodesArray.append(NodeObject);
-		}
-		NodeTab[TabName] = NodesArray;
-		NodesArrays.append(NodeTab);
+		SceneData sceneData;
+		sceneData.tabName = m_tabWidget->tabText(i);
 
-		QJsonObject ConnectionsTab;
-		QJsonArray ConnectionsArray;
-		QVector<NodeConnection*> connections = m_scenes[i]->connections();
-		for (NodeConnection* item : connections)
+		QVector<Node*> nodes = m_scenes[i]->nodes();
+		for (Node* node : nodes)
 		{
-			NodeSocket* start = item->startSocket();
-			Node* parentNode = (Node*)start->parentItem();
-			int startNodeId = parentNode->id();
-			NodeSocket* end = item->endSocket();
-			Node* endParentNode = (Node*)end->parentItem();
-			int endNodeId = endParentNode->id();
-			QJsonObject ConnectionObject;
-			ConnectionObject["startNodeId"] = startNodeId;
-			ConnectionObject["inPortIndex"] = start->id();
-			ConnectionObject["endNodeId"] = endNodeId;
-			ConnectionObject["outPortIndex"] = end->id();
-			ConnectionsArray.append(ConnectionObject);
+			SceneNodeInfo info;
+			info.id = node->id();
+			info.title = node->title();
+			info.position = node->pos();
+			sceneData.nodes.append(info);
 		}
-		ConnectionsTab[TabName] = ConnectionsArray;
-		NodesConnections.append(ConnectionsTab);
+
+		QVector<NodeConnection*> connections = m_scenes[i]->connections();
+		for (NodeConnection* conn : connections)
+		{
+			Node* startNode = qgraphicsitem_cast<Node*>(conn->startSocket()->parentItem());
+			Node* endNode = qgraphicsitem_cast<Node*>(conn->endSocket()->parentItem());
+			if (startNode && endNode)
+			{
+				SceneConnectionInfo info;
+				info.startNodeId = startNode->id();
+				info.endNodeId = endNode->id();
+				sceneData.connections.append(info);
+			}
+		}
+
+		scenesData.append(sceneData);
 	}
-	NodeTabs["Node"] = NodesArrays;
-	NodeTabs["Connection"] = NodesConnections;
-	QJsonDocument doc(NodeTabs);
-	QFile file("./solution/app_params.json");
-	if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-		qWarning() << "Œﬁ∑®¥Úø™Œƒº˛Ω¯–––¥»Î:" << file.errorString();
-	}
-	file.write(doc.toJson(QJsonDocument::Indented));
-	file.close();
+	FlowSerializer::saveToFile(scenesData, "./solution/app_params.json");
 }
 
 void QtNodes::about()
 {
-	QMessageBox::about(this, "πÿ”⁄Ω⁄µ„¡˜≥Ã±‡º≠∆˜",
-		"Ω⁄µ„¡˜≥Ã±‡º≠∆˜\n\n"
-		"“ª∏ˆª˘”⁄QtµƒΩ⁄µ„¡˜≥Ã±‡º≠π§æﬂ£¨÷ß≥÷¥¥Ω®°¢¡¨Ω”∫Õπ‹¿ÌΩ⁄µ„°£\n"
-		" π”√∑Ω∑®:\n"
-		"- ”“º¸µ„ª˜ø’∞◊¥¶¥¥Ω®Ω⁄µ„\n"
-		"- Õœ◊ßΩ⁄µ„ø…“‘“∆∂ØÀ¸√«\n"
-		"- ¥”“ª∏ˆΩ⁄µ„µƒ ‰≥ˆÕœ◊ßµΩ¡Ì“ª∏ˆΩ⁄µ„µƒ ‰»Î¿¥¥¥Ω®¡¨Ω”\n"
-		"- ”“º¸µ„ª˜Ω⁄µ„ªÚ¡¨Ω”ø…“‘¥Úø™…œœ¬Œƒ≤Àµ•");
+	QMessageBox::about(this, QString::fromUtf8("ÂÖ≥‰∫éËäÇÁÇπÊµÅÁ®ãÁºñËæëÂô®"),
+		QString::fromUtf8("ËäÇÁÇπÊµÅÁ®ãÁºñËæëÂô®\n\n"
+		"‰∏Ä‰∏™Âü∫‰∫éQtÁöÑËäÇÁÇπÊµÅÁ®ãÁºñËæëÂ∑•ÂÖ∑ÔºåÊîØÊåÅÂàõÂª∫„ÄÅËøûÊé•ÂíåÁÆ°ÁêÜËäÇÁÇπ„ÄÇ\n"
+		"‰ΩøÁî®ÊñπÊ≥ï:\n"
+		"- Âè≥ÈîÆÁÇπÂáªÁ©∫ÁôΩÂ§ÑÂàõÂª∫ËäÇÁÇπ\n"
+		"- ÊãñÊãΩËäÇÁÇπ‰ª•ÁßªÂä®‰ΩçÁΩÆ\n"
+		"- ‰ªé‰∏Ä‰∏™ËäÇÁÇπËæìÂá∫ÊãñÊãΩÂà∞Âè¶‰∏Ä‰∏™ËäÇÁÇπËæìÂÖ•‰ª•ÂàõÂª∫ËøûÊé•\n"
+		"- Âè≥ÈîÆÁÇπÂáªËäÇÁÇπÊàñËøûÊé•ÂèØÊâìÂºÄÁõ∏ÂÖ≥ËèúÂçï"));
 }

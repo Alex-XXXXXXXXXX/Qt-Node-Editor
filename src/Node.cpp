@@ -8,7 +8,6 @@
 #include <QInputDialog>
 #include <QFontMetrics>
 #include <QDebug>
-#include <QRandomGenerator>
 #include "include/NodeView.h"
 #include "include/NodeScene.h"
 
@@ -33,30 +32,6 @@ void Node::addOutputSocket()
 	m_outputSockets = new NodeSocket(NodeSocket::Output, this);
 	m_outputSockets->setId(0);
 	updateSocketPositions();
-}
-
-void Node::addInputNode(Node* node) {
-	if (node && !m_inputNodes.contains(node)) {
-		m_inputNodes.append(node);
-		node->m_outputNodes.append(this);
-	}
-}
-
-void Node::clearNodes()
-{
-	for (auto node : m_inputNodes) {
-		node->m_outputNodes.removeOne(this);
-	}
-	for (auto node : m_outputNodes) {
-		node->m_inputNodes.removeOne(this);
-	}
-}
-
-void Node::addOutputNode(Node* node) {
-	if (node && !m_outputNodes.contains(node)) {
-		m_outputNodes.append(node);
-		node->m_inputNodes.append(this);
-	}
 }
 
 void Node::updateSocketPositions()
@@ -169,7 +144,6 @@ void Node::auto_Alignment()
 			m_bShowTopLine = true;
 		}
 	}
-	QThread::msleep(10);
 }
 
 void Node::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
@@ -210,44 +184,4 @@ QVariant Node::itemChange(GraphicsItemChange change, const QVariant& value)
 		}
 	}
 	return QGraphicsItem::itemChange(change, value);
-}
-
-void Node::execute(bool is_step)
-{
-	if (m_status != TaskNotStarted) return;
-	for (auto inputNode : m_inputNodes) {
-		if (inputNode->status() != TaskCompleted) {
-			return;
-		}
-	}
-	setStatus(TaskRunning);
-	//test
-	QRandomGenerator* generator = QRandomGenerator::global();
-	int min = -10;
-	int max = 10;
-	int rangeInt = generator->bounded(min, max + 1);
-	//
-	m_task = new Task(rangeInt,
-		[this](const bool& m_result) {
-		QMetaObject::invokeMethod(this, "onTaskCompleted",
-			Qt::QueuedConnection,
-			Q_ARG(bool, m_result)); }
-			);
-	QThreadPool::globalInstance()->start(m_task);
-}
-
-void Node::onTaskCompleted(const bool& result)
-{
-	if (result)
-	{
-		setStatus(TaskCompleted);
-		setResultColor(QColor(10, 191, 61));
-		emit taskCompleted(this);
-	}
-	else
-	{
-		setStatus(TaskCompleted);
-		setResultColor(QColor(238, 0, 0));
-		emit taskCompleted(this);
-	}
 }

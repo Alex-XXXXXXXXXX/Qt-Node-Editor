@@ -12,6 +12,13 @@ NodeScene::NodeScene(QObject* parent)
 {
 	setBackgroundBrush(QBrush(QColor(240, 240, 240)));
 	setSceneRect(0, 0, 2000, 2000);
+	m_graph = new NodeGraph(this);
+	m_engine = new FlowEngine(this);
+	connect(m_graph, &NodeGraph::nodeStatusChanged, this, &NodeScene::onGraphNodeStatusChanged);
+}
+
+NodeScene::~NodeScene()
+{
 }
 
 void NodeScene::createNode(const QString& title, const QPointF& position)
@@ -41,31 +48,37 @@ void NodeScene::createNode(const QString& title, const QPointF& position)
 	{
 		id = NodesId.size();
 	}
+
+	m_graph->addNode(id, title);
+
 	Node* node = new Node(id, title);
 	connect(node, &Node::slot_OpenFunction, this, &NodeScene::slot_OpenFunction);
-	connect(node, &Node::taskCompleted, this, &NodeScene::onTaskCompleted);
 	node->setPos(position);
 	node->addInputSocket();
 	node->addOutputSocket();
 	addItem(node);
 	m_nodes.append(node);
+	m_nodeMap[id] = node;
 }
 
 void NodeScene::createNode(const int& id, const QString& title, const QPointF& position)
 {
+	m_graph->addNode(id, title);
+
 	Node* node = new Node(id, title);
 	connect(node, &Node::slot_OpenFunction, this, &NodeScene::slot_OpenFunction);
-	connect(node, &Node::taskCompleted, this, &NodeScene::onTaskCompleted);
 	node->setPos(position);
 	node->addInputSocket();
 	node->addOutputSocket();
 	addItem(node);
 	m_nodes.append(node);
+	m_nodeMap[id] = node;
 }
 
 void NodeScene::removeNode(Node* node)
 {
 	if (!node || !m_nodes.contains(node)) return;
+
 	QVector<NodeConnection*> connectionsToRemove;
 	for (NodeConnection* connection : m_connections) {
 		if (connection->startSocket()->parentItem() == node ||
@@ -73,15 +86,20 @@ void NodeScene::removeNode(Node* node)
 			connectionsToRemove.append(connection);
 		}
 	}
+
 	disconnect(node, &Node::slot_OpenFunction, this, &NodeScene::slot_OpenFunction);
 	removeItem(node->inputSockets());
 	removeItem(node->outputSockets());
-	node->clearNodes();
+
+	int nodeId = node->id();
 	for (NodeConnection* connection : connectionsToRemove) {
 		removeConnection(connection);
 	}
+
 	removeItem(node);
 	m_nodes.removeOne(node);
+	m_nodeMap.remove(nodeId);
+	m_graph->removeNode(nodeId);
 	delete node;
 	node = nullptr;
 }
@@ -89,6 +107,19 @@ void NodeScene::removeNode(Node* node)
 void NodeScene::removeConnection(NodeConnection* connection)
 {
 	if (!connection || !m_connections.contains(connection)) return;
+
+	NodeSocket* startSock = connection->startSocket();
+	NodeSocket* endSock = connection->endSocket();
+	if (startSock && endSock)
+	{
+		Node* startNode = qgraphicsitem_cast<Node*>(startSock->parentItem());
+		Node* endNode = qgraphicsitem_cast<Node*>(endSock->parentItem());
+		if (startNode && endNode)
+		{
+			m_graph->disconnectNodes(startNode->id(), endNode->id());
+		}
+	}
+
 	if (connection->startSocket()) {
 		connection->startSocket()->setConnected(false);
 	}
@@ -109,14 +140,17 @@ bool NodeScene::canConnect(NodeSocket* socket1, NodeSocket* socket2) const
 	if (socket1->socketType() == socket2->socketType()) {
 		return false;
 	}
-	for (auto conn : m_connections)
-	{
-		if (conn->startSocket() == socket1 && conn->endSocket() == socket2)
-		{
-			return false;
-		}
-	}
-	return true;
+
+	Node* node1 = qgraphicsitem_cast<Node*>(socket1->parentItem());
+	Node* node2 = qgraphicsitem_cast<Node*>(socket2->parentItem());
+	if (!node1 || !node2) return false;
+
+	int fromId = node1->id();
+	int toId = node2->id();
+	if (socket1->socketType() == NodeSocket::Input)
+		std::swap(fromId, toId);
+
+	return m_graph->canConnect(fromId, toId);
 }
 
 NodeConnection* NodeScene::connectSockets(NodeSocket* startSocket, NodeSocket* endSocket)
@@ -130,19 +164,14 @@ NodeConnection* NodeScene::connectSockets(NodeSocket* startSocket, NodeSocket* e
 		outputSocket = endSocket;
 		inputSocket = startSocket;
 	}
-	if (Node* in_node = qgraphicsitem_cast<Node*>(inputSocket->parentItem()))
-	{
-		if (Node* out_node = qgraphicsitem_cast<Node*>(outputSocket->parentItem()))
-		{
-			out_node->addOutputNode(in_node);
-			bool cycleExists = hasCycle();
-			if (cycleExists) {
-				in_node->outputNodes().removeOne(out_node);
-				out_node->inputNodes().removeOne(in_node);
-				return nullptr;
-			}
-		}
-	}
+
+	Node* outNode = qgraphicsitem_cast<Node*>(outputSocket->parentItem());
+	Node* inNode = qgraphicsitem_cast<Node*>(inputSocket->parentItem());
+	if (!outNode || !inNode) return nullptr;
+
+	if (!m_graph->connectNodes(outNode->id(), inNode->id()))
+		return nullptr;
+
 	NodeConnection* connection = new NodeConnection(outputSocket, inputSocket);
 	addItem(connection);
 	m_connections.append(connection);
@@ -151,98 +180,36 @@ NodeConnection* NodeScene::connectSockets(NodeSocket* startSocket, NodeSocket* e
 	return connection;
 }
 
-bool NodeScene::hasCycleUtil(Node* node, QMap<Node*, bool>& visited, QMap<Node*, bool>& recStack)
+QList<int> NodeScene::topologicalSort()
 {
-	if (!visited[node]) {
-		visited[node] = true;
-		recStack[node] = true;
-		{
-			for (auto neighbor : node->outputNodes()) {
-				if (!visited[neighbor] && hasCycleUtil(neighbor, visited, recStack)) {
-					return true;
-				}
-				else if (recStack[neighbor]) {
-					return true;
-				}
-			}
-		}
-	}
-	recStack[node] = false;
-	return false;
+	return m_graph->topologicalSort();
 }
 
-bool NodeScene::hasCycle()
+void NodeScene::executeFlow()
 {
-	QMap<Node*, bool> visited;
-	QMap<Node*, bool> recStack;
-	QList<Node*> nodes;
-	for (auto item : items()) {
-		if (Node* node = qgraphicsitem_cast<Node*>(item)) {
-			if (node->type() == QGraphicsItem::UserType + 3)
-			{
-				nodes.append(node);
-			}
-		}
+	QList<int> sorted = m_graph->topologicalSort();
+	if (sorted.isEmpty())
+		return;
+
+	for (auto it = m_nodeMap.begin(); it != m_nodeMap.end(); ++it)
+	{
+		it.value()->setResultColor(Qt::white);
+		it.value()->setStatus(TaskNotStarted);
 	}
-	for (auto node : nodes) {
-		if (hasCycleUtil(node, visited, recStack)) {
-			return true;
-		}
-	}
-	return false;
+
+	m_engine->execute(m_graph);
 }
 
-QList<Node*> NodeScene::TopologicalSorting()
+void NodeScene::onGraphNodeStatusChanged(int id, TaskStatus status)
 {
-	QList<Node*> result;
-	if (hasCycle()) return result;
-	QList<Node*> nodes;
-	for (auto item : items()) {
-		if (item->type() == QGraphicsItem::UserType + 3)
-		{
-			if (Node* node = qgraphicsitem_cast<Node*>(item)) {
-				nodes.append(node);
-			}
-		}
-	}
-	QMap<Node*, int> inDegree;
-	for (auto node : nodes) {
-		inDegree[node] = node->inputNodes().size();
-	}
-	std::queue<Node*> q;
-	for (auto node : nodes) {
-		if (inDegree[node] == 0) {
-			q.push(node);
-		}
-	}
-	while (!q.empty()) {
-		Node* current = q.front();
-		q.pop();
-		result.append(current);
-		for (auto neighbor : current->outputNodes()) {
-			inDegree[neighbor]--;
-			if (inDegree[neighbor] == 0) {
-				q.push(neighbor);
-			}
-		}
-	}
-	return result;
-}
-
-void NodeScene::onTaskCompleted(Node* node) {
-	QList<Node*> m_outputNode = node->outputNodes();
-	for (auto outputNode : node->outputNodes()) {
-		bool allInputsCompleted = true;
-		for (auto input : outputNode->inputNodes()) {
-			if (input->status() != TaskCompleted) {
-				allInputsCompleted = false;
-				break;
-			}
-		}
-		if (allInputsCompleted && outputNode->status() == TaskNotStarted) {
-			outputNode->execute();
-		}
-	}
+	if (!m_nodeMap.contains(id))
+		return;
+	Node* node = m_nodeMap[id];
+	node->setStatus(status);
+	if (status == TaskCompleted)
+		node->setResultColor(QColor(10, 191, 61));
+	else if (status == TaskFailed)
+		node->setResultColor(QColor(238, 0, 0));
 }
 
 void NodeScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
@@ -314,14 +281,15 @@ void NodeScene::contextMenuEvent(QGraphicsSceneContextMenuEvent* event)
 	QGraphicsItem* item = itemAt(event->scenePos(), QTransform());
 	if (!item) {
 		QMenu menu;
-		QAction* createDefaultNodeAction = new QAction("´´½¨Ä¬ÈÏ½Úµã", this);
+		QAction* createDefaultNodeAction = new QAction(QString::fromUtf8("åˆ›å»ºé»˜è®¤èŠ‚ç‚¹"), this);
 		connect(createDefaultNodeAction, &QAction::triggered, [this, event]() {
-			createNode("½Úµã", event->scenePos());
+			createNode(QString::fromUtf8("èŠ‚ç‚¹"), event->scenePos());
 		});
-		QAction* createCustomNodeAction = new QAction("´´½¨×Ô¶¨Òå½Úµã", this);
+		QAction* createCustomNodeAction = new QAction(QString::fromUtf8("åˆ›å»ºè‡ªå®šä¹‰èŠ‚ç‚¹"), this);
 		connect(createCustomNodeAction, &QAction::triggered, [this, event]() {
 			bool ok;
-			QString title = QInputDialog::getText(nullptr, "´´½¨½Úµã", "½ÚµãÃû³Æ:", QLineEdit::Normal, "½Úµã", &ok);
+			QString title = QInputDialog::getText(nullptr, QString::fromUtf8("åˆ›å»ºèŠ‚ç‚¹"),
+				QString::fromUtf8("èŠ‚ç‚¹åç§°:"), QLineEdit::Normal, QString::fromUtf8("èŠ‚ç‚¹"), &ok);
 			if (ok && !title.isEmpty()) {
 				createNode(title, event->scenePos());
 			}
@@ -334,13 +302,13 @@ void NodeScene::contextMenuEvent(QGraphicsSceneContextMenuEvent* event)
 		NodeConnection* connection = qgraphicsitem_cast<NodeConnection*>(item);
 		QMenu menu;
 
-		QAction* deleteAction = new QAction("É¾³ýÁ¬½Ó", this);
+		QAction* deleteAction = new QAction(QString::fromUtf8("åˆ é™¤è¿žæŽ¥"), this);
 		connect(deleteAction, &QAction::triggered, [this, connection]() {
 			removeConnection(connection);
 		});
-		QAction* changeColorAction = new QAction("¸ü¸ÄÑÕÉ«", this);
+		QAction* changeColorAction = new QAction(QString::fromUtf8("æ›´æ”¹é¢œè‰²"), this);
 		connect(changeColorAction, &QAction::triggered, [connection]() {
-			QColor newColor = QColorDialog::getColor(connection->color(), nullptr, "Ñ¡ÔñÁ¬½ÓÏßÑÕÉ«");
+			QColor newColor = QColorDialog::getColor(connection->color(), nullptr, QString::fromUtf8("é€‰æ‹©è¿žæŽ¥çº¿é¢œè‰²"));
 			if (newColor.isValid()) {
 				connection->setColor(newColor);
 			}
